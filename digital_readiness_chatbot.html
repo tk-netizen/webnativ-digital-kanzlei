@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digitalisierungs‑Check für Kanzleien</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .header {
+      background-color: #022a4d;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+    }
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .message {
+      max-width: 80%;
+      padding: 10px 15px;
+      margin: 5px 0;
+      border-radius: 10px;
+      line-height: 1.4;
+    }
+    .bot {
+      background-color: #e0e7ff;
+      align-self: flex-start;
+    }
+    .user {
+      background-color: #d1fae5;
+      align-self: flex-end;
+    }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .option-btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #2563eb;
+      color: white;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    .option-btn:hover {
+      background-color: #1e40af;
+    }
+    .input-container {
+      padding: 10px;
+      background: #fff;
+      border-top: 1px solid #ccc;
+      display: flex;
+    }
+    .input-container input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    .input-container button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      .message {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Digitalisierungs‑Check</h1>
+    <p>Testen Sie in wenigen Minuten, wie bereit Ihre Kanzlei für die Zukunft ist!</p>
+  </div>
+  <div id="chat" class="chat-container"></div>
+  <div id="inputContainer" class="input-container hidden">
+    <input type="text" id="contactInput" placeholder="Ihre Kontaktdaten (optional)" />
+    <button id="sendContact">Senden</button>
+  </div>
+  <script>
+    // Fragen und Optionen definieren
+    const quiz = [
+      {
+        id: 'profession',
+        text: 'Welches Berufsbild beschreibt Sie am besten?',
+        options: [
+          { text: 'Steuerberater', value: 'steuerberater', score: 0 },
+          { text: 'Rechtsanwalt', value: 'rechtsanwalt', score: 0 }
+        ]
+      },
+      {
+        id: 'documents',
+        text: 'Wie bearbeiten Sie aktuell eingehende Dokumente (z. B. Rechnungen, Schriftsätze)?',
+        options: [
+          { text: 'Überwiegend papierbasiert / manuell', score: 0 },
+          { text: 'Teilweise digital (gescannt), aber ohne Automatisierung', score: 1 },
+          { text: 'Vollständig digital mit automatischer Klassifikation', score: 2 }
+        ]
+      },
+      {
+        id: 'communication',
+        text: 'Wie kommunizieren Sie hauptsächlich mit Ihren Mandanten?',
+        options: [
+          { text: 'E-Mail/Telefon', score: 0 },
+          { text: 'Digitales Mandantenportal / Chat', score: 1 },
+          { text: 'Integrierte Sprach- oder Chat-Assistenten', score: 2 }
+        ]
+      },
+      {
+        id: 'collaboration',
+        text: 'Nutzen Sie digitale Tools für die interne Zusammenarbeit (Dokumentenablage, Aufgaben, Fristen)?',
+        options: [
+          { text: 'Nein, vorwiegend E-Mail & Papier', score: 0 },
+          { text: 'Grundlegende Tools (z. B. Cloud-Speicher, Chat)', score: 1 },
+          { text: 'Umfassende Plattformen mit Automatisierung', score: 2 }
+        ]
+      },
+      {
+        id: 'ai_usage',
+        text: 'Setzen Sie bereits KI oder Automatisierung für Dokumentenanalyse ein?',
+        options: [
+          { text: 'Nein, bisher nicht', score: 0 },
+          { text: 'OCR / einfache Texterkennung', score: 1 },
+          { text: 'KI-basierte Klassifikation & Analyse', score: 2 }
+        ]
+      },
+      {
+        id: 'tool_update',
+        text: 'Wie häufig aktualisieren Sie Ihre digitalen Tools oder Workflows?',
+        options: [
+          { text: 'Selten oder nie', score: 0 },
+          { text: 'Einmal im Jahr', score: 1 },
+          { text: 'Regelmäßig (mindestens vierteljährlich)', score: 2 }
+        ]
+      },
+      {
+        id: 'calls',
+        text: 'Wie wichtig ist das Telefon- oder Sprachmanagement in Ihrem Tagesgeschäft?',
+        options: [
+          { text: 'Kaum relevant', score: 0 },
+          { text: 'Wichtig, aber beherrschbar', score: 1 },
+          { text: 'Sehr wichtig, nimmt viel Zeit in Anspruch', score: 2 }
+        ]
+      },
+      {
+        id: 'response_speed',
+        text: 'Wie schnell können Sie aktuell auf Gegenschreiben oder Mandantenanfragen reagieren?',
+        options: [
+          { text: 'Langsam (mehrere Tage)', score: 0 },
+          { text: 'Mittel (1–2 Tage)', score: 1 },
+          { text: 'Sehr schnell (am selben Tag)', score: 2 }
+        ]
+      }
+    ];
+
+    let currentQuestion = 0;
+    const answers = {};
+
+    const chatBox = document.getElementById('chat');
+
+    // Vordefinierte Tipps für jede Frage/Antwort-Kombination
+    const tips = {
+      profession: {
+        steuerberater: 'Als Steuerberater können digitale Prozesse und KI enorme Zeitersparnisse bringen – z. B. kann die automatisierte Belegverarbeitung den Aufwand für Rechnungen um über 70 % reduzieren【831630848897624†L214-L220】.',
+        rechtsanwalt: 'Als Rechtsanwalt profitieren Sie besonders von KI‑gestützter Dokumentenanalyse und der automatischen Erstellung von Entwürfen; über die Hälfte der Kanzleien testen bereits solche Lösungen【83704299181571†L379-L386】.'
+      },
+      documents: {
+        0: 'Papierbasierte Prozesse verursachen viel Aufwand. KI‑Lösungen können den Aufwand zur Belegverarbeitung drastisch reduzieren【831630848897624†L214-L220】.',
+        1: 'Teilweise Digitalisierung ist ein guter Anfang. Durch Automatisierung Ihrer Dokumentenflüsse können Sie weitere Zeit sparen.',
+        2: 'Mit voll digitalisierten Abläufen sind Sie gut aufgestellt. Der nächste Schritt ist die KI‑gestützte Klassifikation und Analyse Ihrer Dokumente【839520826448144†L296-L312】.'
+      },
+      communication: {
+        0: 'E‑Mail und Telefon sind klassische Kanäle. Ein digitales Mandantenportal verbessert die Effizienz und Mandantenbindung.',
+        1: 'Digitale Portale erleichtern die Zusammenarbeit und verringern Rückfragen.',
+        2: 'Sprach‑ und Chat‑Assistenten entlasten Ihr Team und ermöglichen schnellen Support – immer mehr Kanzleien setzen sie bereits ein【839520826448144†L296-L312】.'
+      },
+      collaboration: {
+        0: 'Ohne digitale Tools gehen viele Informationen verloren. Eine zentrale digitale Ablage spart Zeit und verhindert Fehler.',
+        1: 'Grundlegende Tools sind ein guter Start. Plattformen mit Automatisierung heben Effizienzpotenziale【839520826448144†L324-L328】.',
+        2: 'Mit einer umfassenden Plattform sind Sie bereit, KI‑Module zu nutzen und Prozesse weiter zu automatisieren【839520826448144†L296-L312】.'
+      },
+      ai_usage: {
+        0: 'Mit OCR können Sie beginnen; KI‑basierte Analysen heben das Potenzial noch deutlicher【831630848897624†L118-L131】.',
+        1: 'OCR ist ein guter Einstieg. Der nächste Schritt: KI‑basierte Klassifikation, die Klauseln und Fristen automatisch erkennt【831630848897624†L268-L284】.',
+        2: 'Sie nutzen bereits KI‑Analysen – wichtig ist nun, die Ergebnisse konsequent in Ihre Workflows zu integrieren.'
+      },
+      tool_update: {
+        0: 'Regelmäßige Updates sind wichtig, um auf dem neuesten Stand zu bleiben und Sicherheitslücken zu schließen【839520826448144†L296-L312】.',
+        1: 'Ein jährliches Update ist solide, aber kürzere Intervalle verschaffen Ihnen einen Wettbewerbsvorteil.',
+        2: 'Mit regelmäßigen Updates zeigen Sie einen hohen Digitalisierungsgrad und sind bereit für weitere KI‑Module.'
+      },
+      calls: {
+        0: 'Telefonmanagement ist für Sie aktuell weniger relevant – so können Sie sich stärker auf digitale Prozesse konzentrieren.',
+        1: 'Effizientes Call‑Management spart Zeit. Voice‑Agenten können Routineanrufe übernehmen, sodass Ihr Team sich auf Beratung konzentriert.',
+        2: 'Viele Anrufe deuten auf einen hohen Bedarf an Voice‑Assistenten hin, um Ihr Team zu entlasten und die Erreichbarkeit zu erhöhen.'
+      },
+      response_speed: {
+        0: 'Langsame Reaktionen können Mandanten verärgern oder Nachteile verursachen. Automatisierte Drafting‑Tools beschleunigen Ihre Antworten.',
+        1: 'Ihre Reaktionsgeschwindigkeit ist moderat – KI‑basierte Entwurfstools können sie weiter verbessern.',
+        2: 'Schnelle Antworten sind großartig! KI kann Ihnen helfen, die Qualität Ihrer Schreiben zu erhöhen und komplexe Fälle zu beschleunigen.'
+      }
+    };
+
+    // Event delegation is no longer needed because each button has its own click handler
+
+    function addMessage(text, sender) {
+      const messageElem = document.createElement('div');
+      messageElem.classList.add('message', sender);
+      messageElem.innerHTML = text;
+      chatBox.appendChild(messageElem);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function displayOptions(options, questionIndex) {
+      const optionsContainer = document.createElement('div');
+      optionsContainer.classList.add('options');
+      options.forEach((opt) => {
+        const button = document.createElement('button');
+        button.classList.add('option-btn');
+        button.textContent = opt.text;
+        // Attach a direct click handler that references the option and current question
+        button.addEventListener('click', () => {
+          handleAnswer(opt, questionIndex);
+        });
+        optionsContainer.appendChild(button);
+      });
+      chatBox.appendChild(optionsContainer);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleAnswer(option, questionIndex) {
+      // Remove existing options so they are not shown again
+      const optionsDiv = chatBox.querySelector('.options');
+      if (optionsDiv) chatBox.removeChild(optionsDiv);
+      // Display the user’s selected answer
+      addMessage(option.text, 'user');
+      // Store answer for later scoring
+      answers[quiz[questionIndex].id] = option;
+      // Determine and display a tip based on the current question and selected option
+      const questionId = quiz[questionIndex].id;
+      let tipText;
+      if (questionId === 'profession') {
+        // Use the value field as key for profession-specific tips
+        tipText = tips[questionId][option.value];
+      } else {
+        // Use the index of the chosen option as key for other questions
+        const optIndex = quiz[questionIndex].options.indexOf(option);
+        tipText = tips[questionId][optIndex];
+      }
+      if (tipText) {
+        addMessage(tipText, 'bot');
+      }
+      // Proceed to next question or show results
+      currentQuestion++;
+      if (currentQuestion < quiz.length) {
+        askQuestion(currentQuestion);
+      } else {
+        showResult();
+      }
+    }
+
+    function askQuestion(index) {
+      const q = quiz[index];
+      addMessage(q.text, 'bot');
+      // Pass the index to displayOptions so that each button knows which question it belongs to
+      displayOptions(q.options, index);
+    }
+
+    function showResult() {
+      // compute score and suggestions
+      let totalScore = 0;
+      for (const key in answers) {
+        totalScore += answers[key].score;
+      }
+      const profession = answers['profession'] ? answers['profession'].value : 'unknown';
+      const level = totalScore <= 6 ? 'Basis' : totalScore <= 10 ? 'Mittel' : 'Fortgeschritten';
+      // Determine product recommendations
+      const recommendations = [];
+      // Workflow Agent if digital readiness low or medium
+      if (totalScore <= 10) {
+        recommendations.push('Workflow‑Agenten: Automatisieren Sie Routineaufgaben und schaffen Sie ein digitales Fundament.');
+      }
+      // Voice agent based on calls
+      if (answers['calls'] && answers['calls'].score >= 1) {
+        recommendations.push('Voice‑Agenten: Entlasten Sie Ihr Team bei der Telefonannahme und verbessern Sie Ihre Erreichbarkeit.');
+      }
+      // Web app for lawyers
+      if (profession === 'rechtsanwalt') {
+        recommendations.push('KI‑Schriftgenerator: Unser Web‑Agent erstellt Antwortschreiben basierend auf Ihren Akten und aktueller Rechtsprechung.');
+      }
+      addMessage(`<strong>Ihr Ergebnis:</strong> Digitalisierungsgrad: <em>${level}</em> (${totalScore} Punkte)`, 'bot');
+      if (recommendations.length > 0) {
+        let recText = '<strong>Empfehlungen:</strong><ul>';
+        recommendations.forEach(r => recText += `<li>${r}</li>`);
+        recText += '</ul>';
+        addMessage(recText, 'bot');
+      }
+      // Updated call-to-action inviting the user to receive a detailed report via email
+      addMessage('Wenn Sie Ihr Ergebnis genauer verstehen möchten, senden wir Ihnen gerne eine ausführliche Handlungsempfehlung und einen Mini‑Leitfaden per E‑Mail. Geben Sie dafür bitte Ihre Kontaktdaten an.', 'bot');
+      document.getElementById('inputContainer').classList.remove('hidden');
+    }
+
+    document.getElementById('sendContact').addEventListener('click', () => {
+      const contactVal = document.getElementById('contactInput').value.trim();
+      if (contactVal) {
+        addMessage(contactVal, 'user');
+        // Simulate acknowledgement
+        addMessage('Vielen Dank! Wir werden uns bald bei Ihnen melden.', 'bot');
+        document.getElementById('inputContainer').classList.add('hidden');
+      }
+    });
+
+    // Override functions to enhance the user experience (kept for reference but not used).
+    // This custom handleAnswer shows a contextual tip after each answer.
+    const handleAnswerOverride = function(option, questionIndex) {
+      // Remove options so they are not displayed again
+      const optionsDiv = chatBox.querySelector('.options');
+      if (optionsDiv) chatBox.removeChild(optionsDiv);
+      // Show the user's selection
+      addMessage(option.text, 'user');
+      // Store answer for scoring
+      answers[quiz[questionIndex].id] = option;
+      // Determine a tip based on the question and selected option
+      const questionId = quiz[questionIndex].id;
+      let tipText;
+      if (questionId === 'profession') {
+        // Use the value field as key for profession-specific tips
+        tipText = tips[questionId][option.value];
+      } else {
+        // Use the index of the chosen option as key for other questions
+        const optIndex = quiz[questionIndex].options.indexOf(option);
+        tipText = tips[questionId][optIndex];
+      }
+      // Display tip if one exists
+      if (tipText) {
+        addMessage(tipText, 'bot');
+      }
+      // Proceed to next question or finish
+      currentQuestion++;
+      if (currentQuestion < quiz.length) {
+        askQuestion(currentQuestion);
+      } else {
+        showResult();
+      }
+    };
+
+    // Custom showResult to adjust the final call-to-action text.
+    const showResultOverride = function() {
+      let totalScore = 0;
+      for (const key in answers) {
+        totalScore += answers[key].score;
+      }
+      const professionVal = answers['profession'] ? answers['profession'].value : 'unknown';
+      const level = totalScore <= 6 ? 'Basis' : totalScore <= 10 ? 'Mittel' : 'Fortgeschritten';
+      const recommendations = [];
+      if (totalScore <= 10) {
+        recommendations.push('Workflow‑Agenten: Automatisieren Sie Routineaufgaben und schaffen Sie ein digitales Fundament.');
+      }
+      if (answers['calls'] && answers['calls'].score >= 1) {
+        recommendations.push('Voice‑Agenten: Entlasten Sie Ihr Team bei der Telefonannahme und verbessern Sie Ihre Erreichbarkeit.');
+      }
+      if (professionVal === 'rechtsanwalt') {
+        recommendations.push('KI‑Schriftgenerator: Unser Web‑Agent erstellt Antwortschreiben basierend auf Ihren Akten und aktueller Rechtsprechung.');
+      }
+      addMessage(`<strong>Ihr Ergebnis:</strong> Digitalisierungsgrad: <em>${level}</em> (${totalScore} Punkte)`, 'bot');
+      if (recommendations.length > 0) {
+        let recText = '<strong>Empfehlungen:</strong><ul>';
+        recommendations.forEach(r => recText += `<li>${r}</li>`);
+        recText += '</ul>';
+        addMessage(recText, 'bot');
+      }
+      // Updated call-to-action for detailed report
+      addMessage('Wenn Sie Ihr Ergebnis genauer verstehen möchten, senden wir Ihnen gerne eine ausführliche Handlungsempfehlung und einen Mini‑Leitfaden per E‑Mail. Geben Sie dafür bitte Ihre Kontaktdaten an.', 'bot');
+      document.getElementById('inputContainer').classList.remove('hidden');
+    };
+
+    // Start quiz
+    addMessage('Willkommen zum Digitalisierungs‑Check! Bitte beantworten Sie ein paar Fragen, um Ihre digitale Reife zu ermitteln.', 'bot');
+    askQuestion(currentQuestion);
+  </script>
+</body>
+</html>
